@@ -1,0 +1,10 @@
+mpy-replay
+Copyright (c) 2026 Ahmed (lachiheb-ahmed)
+https://github.com/lachiheb-ahmed
+
+Original author and initial design: Ahmed (lachiheb-ahmed).
+Redistributions and derivative works must retain this notice and the
+copyright header of each source file (see LICENSE).
+
+This project integrates with MicroPython (MIT), (c) Damien P. George and
+contributors. https://github.com/micropython/micropython

@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use mpy-replay, please cite it as below."
+title: "mpy-replay: deterministic record and replay for MicroPython"
+version: 0.1.0-alpha
+date-released: 2026-11-20
+license: MIT
+repository-code: "https://github.com/lachiheb-ahmed/mpy-replay"
+authors:
+  - given-names: "Ahmed"
+    alias: "lachiheb-ahmed"
+keywords:
+  - micropython
+  - embedded
+  - record and replay
+  - debugging

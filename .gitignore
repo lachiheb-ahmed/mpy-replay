@@ -1,0 +1,15 @@
+# build outputs
+build/
+build-*/
+*.o
+*.elf
+*.bin
+# generated and local files
+*.mrl
+__pycache__/
+*.pyc
+.DS_Store
+# host binaries
+tests/test_core
+tests/fuzz_reader
+tools/mrl_dump

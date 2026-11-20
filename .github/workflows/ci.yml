@@ -1,0 +1,71 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core unit tests (AddressSanitizer + UBSan)
+        run: make test
+      - name: Fuzz the log parser (300 000 corrupted logs)
+        run: make fuzz
+      - name: Build the log dump tool
+        run: make tools/mrl_dump
+
+  micropython-unix:
+    runs-on: ubuntu-latest
+    env:
+      MP_COMMIT: 9e10c3e
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: mpy-replay
+      - name: Fetch MicroPython (pinned)
+        run: |
+          git clone https://github.com/micropython/micropython.git mp
+          git -C mp checkout "$MP_COMMIT"
+          make -C mp/mpy-cross -j4
+          make -C mp/ports/unix submodules
+      - name: Patch time hooks and check build-time validation
+        run: |
+          python3 mpy-replay/scripts/apply_time_hook.py mp
+          sh mpy-replay/tests/build_checks.sh "$PWD/mp"
+      - name: Build record and replay binaries
+        run: |
+          H=0123456789abcdef0123456789abcdef01234567
+          for m in 0 1; do
+            b=build-rec; [ $m = 1 ] && b=build-replay
+            make -C mp/ports/unix -j4 VARIANT=standard MICROPY_PY_SSL=0 MICROPY_PY_BTREE=0 \
+              USER_C_MODULES="$PWD/mpy-replay" MPY_REPLAY_PORT=unix MPY_REPLAY_MODE=$m \
+              MPY_REPLAY_TEST=1 MPY_REPLAY_FW_HASH=$H BUILD=$PWD/mp/ports/unix/$b
+          done
+      - name: End to end and regression tests
+        run: |
+          REC=$PWD/mp/ports/unix/build-rec/micropython
+          RPL=$PWD/mp/ports/unix/build-replay/micropython
+          cd mpy-replay/tests/e2e
+          ./run_e2e.sh $REC $RPL app.py
+          ./run_e2e.sh $REC $RPL app_io.py
+          ./run_regress.sh $REC $RPL
+
+  micropython-stm32-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        board: [NUCLEO_F429ZI, PYBV11, NUCLEO_F767ZI]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: mpy-replay
+      - run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi
+      - name: Build firmware with the module
+        run: |
+          git clone https://github.com/micropython/micropython.git mp
+          git -C mp checkout 9e10c3e
+          make -C mp/mpy-cross -j4
+          python3 mpy-replay/scripts/apply_time_hook.py mp
+          make -C mp/ports/stm32 BOARD=${{ matrix.board }} submodules
+          make -C mp/ports/stm32 BOARD=${{ matrix.board }} -j4 MICROPY_USE_COMPILER_PLUGIN=none \
+            USER_C_MODULES=$PWD/mpy-replay MPY_REPLAY_PORT=stm32 \
+            MPY_REPLAY_FW_HASH=0123456789abcdef0123456789abcdef01234567
