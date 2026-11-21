@@ -6,7 +6,9 @@
  *   MRL_LOG       path of the log file   (default: mpy-replay.mrl)
  *   MRL_CAPACITY  max log size in bytes  (default: 16 MiB)
  */
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
