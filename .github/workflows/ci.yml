@@ -31,12 +31,14 @@ jobs:
         run: |
           python3 mpy-replay/scripts/apply_time_hook.py mp
           sh mpy-replay/tests/build_checks.sh "$PWD/mp"
+      # MICROPY_PY_FFI=0: the unix port otherwise needs the libffi headers (modffi.c),
+      # and without them the qstr preprocessing step fails. This module does not use FFI.
       - name: Build record and replay binaries
         run: |
           H=0123456789abcdef0123456789abcdef01234567
           for m in 0 1; do
             b=build-rec; [ $m = 1 ] && b=build-replay
-            make -C mp/ports/unix -j4 VARIANT=standard MICROPY_PY_SSL=0 MICROPY_PY_BTREE=0 \
+            make -C mp/ports/unix -j4 VARIANT=standard MICROPY_PY_SSL=0 MICROPY_PY_BTREE=0 MICROPY_PY_FFI=0 \
               USER_C_MODULES="$PWD/mpy-replay" MPY_REPLAY_PORT=unix MPY_REPLAY_MODE=$m \
               MPY_REPLAY_TEST=1 MPY_REPLAY_FW_HASH=$H BUILD=$PWD/mp/ports/unix/$b
           done

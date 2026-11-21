@@ -116,10 +116,11 @@ make -C mpy-cross && make -C ports/unix submodules
 python3 /path/to/mpy-replay/scripts/apply_time_hook.py .
 
 # 2. record build and replay build
-make -C ports/unix VARIANT=standard USER_C_MODULES=/path/to/mpy-replay \
-     MPY_REPLAY_PORT=unix MPY_REPLAY_FW_HASH=$(git rev-parse HEAD) BUILD=build-rec
-make -C ports/unix VARIANT=standard USER_C_MODULES=/path/to/mpy-replay \
-     MPY_REPLAY_PORT=unix MPY_REPLAY_MODE=1 MPY_REPLAY_FW_HASH=$(git rev-parse HEAD) BUILD=build-replay \
+make -C ports/unix VARIANT=standard MICROPY_PY_SSL=0 MICROPY_PY_BTREE=0 MICROPY_PY_FFI=0 \
+     USER_C_MODULES=/path/to/mpy-replay MPY_REPLAY_PORT=unix \
+     MPY_REPLAY_FW_HASH=$(git rev-parse HEAD) BUILD=build-rec
+make -C ports/unix VARIANT=standard MICROPY_PY_SSL=0 MICROPY_PY_BTREE=0 MICROPY_PY_FFI=0 \
+     USER_C_MODULES=/path/to/mpy-replay MPY_REPLAY_PORT=unix MPY_REPLAY_MODE=1 MPY_REPLAY_FW_HASH=$(git rev-parse HEAD) BUILD=build-replay \
      CFLAGS_EXTRA='-DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_FLOAT'   # match an STM32 recording (single-precision floats)
 
 # 3. record (replay_io.py must be importable)
@@ -133,7 +134,7 @@ MRL_REPLAY_LOG=run.mrl ports/unix/build-replay/micropython app.py
 
 Step-by-step instructions for an STM32 board are in [docs/BOARD_TEST.md](docs/BOARD_TEST.md).
 
-The default build also compiles TLS and takes several minutes. For a much faster build add `MICROPY_PY_SSL=0 MICROPY_PY_BTREE=0` to both `make` commands (the module does not need them).
+`MICROPY_PY_SSL=0 MICROPY_PY_BTREE=0` only make the build much faster. **`MICROPY_PY_FFI=0` matters:** without it the unix port needs the libffi headers (`libffi-dev` and `pkg-config` on Debian/Ubuntu), and on a machine that lacks them the build stops at `modffi.c: fatal error: ffi.h: No such file or directory` / `qstr.i.last ... Error 1`. The module uses none of these features.
 
 A complete runnable example, including the automated comparison of a recording and its replay, is in `tests/e2e/` (`run_e2e.sh`).
 

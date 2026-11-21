@@ -1,13 +1,15 @@
 # SPDX-License-Identifier: MIT
 # mpy-replay - Copyright (c) 2026 Ahmed (lachiheb-ahmed)
 # Board test: records 300 ADC samples, then crashes on purpose.
-# Change "A0" to an analog pin of YOUR board (e.g. "X1" on PYBv1.1).
+# Set ADC_PIN to an analog-capable pin of YOUR board:
+#   NUCLEO_F429ZI / NUCLEO_F767ZI: "A0"      PYBv1.1: "X1"      others: see your board pinout
+ADC_PIN = "A0"
 import time
 import machine
 import replay
 import replay_io
 
-adc_hw = machine.ADC("A0")
+adc_hw = machine.ADC(machine.Pin(ADC_PIN))
 replay.start()                       # logical clock starts here
 adc = replay_io.ADC(adc_hw, uid=0)
 

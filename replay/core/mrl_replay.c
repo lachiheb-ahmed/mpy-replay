@@ -31,6 +31,20 @@ static void set_div(mrl_div_reason_t why, uint8_t expected) {
     rp.div.event_index = rp.st.consumed;
 }
 
+/* Divergence on the content of an event that was already consumed (mark, checkpoint, crash):
+ * report that event, not the one that follows it. */
+static void set_div_ev(mrl_div_reason_t why, uint8_t expected, const mrl_event_t *ev) {
+    if (rp.div.reason != MRL_DIV_NONE) {
+        return;
+    }
+    rp.div.reason = why;
+    rp.div.lclk_now = mrl_lclk;
+    rp.div.lclk_log = ev->lclk;
+    rp.div.type_expected = expected;
+    rp.div.type_logged = ev->type;
+    rp.div.event_index = rp.st.consumed ? rp.st.consumed - 1 : 0;
+}
+
 mrl_err_t mrl_replay_begin(const uint8_t *data, size_t size, bool strict_heap) {
     if (mrl_mode != MRL_MODE_OFF) {
         return MRL_ERR_STATE;
@@ -165,14 +179,14 @@ mrl_err_t mrl_checkpoint(uint8_t kind, uint32_t value) {
         return e;
     }
     if (ev.len != 5 || ev.payload[0] != kind) {
-        set_div(MRL_DIV_VALUE, MRL_EV_CHECKPOINT);
+        set_div_ev(MRL_DIV_VALUE, MRL_EV_CHECKPOINT, &ev);
         return MRL_ERR_DIVERGED;
     }
     if (kind == MRL_CKPT_HEAP && !rp.strict_heap) {
         return MRL_OK; /* heap CRC is only comparable on a bit-exact target */
     }
     if (mrl_get32(ev.payload + 1) != value) {
-        set_div(MRL_DIV_VALUE, MRL_EV_CHECKPOINT);
+        set_div_ev(MRL_DIV_VALUE, MRL_EV_CHECKPOINT, &ev);
         return MRL_ERR_DIVERGED;
     }
     return MRL_OK;
@@ -199,7 +213,7 @@ mrl_err_t mrl_crash(const char *text, size_t len) {
         return e;
     }
     if (ev.len != len || (len && memcmp(ev.payload, text, len) != 0)) {
-        set_div(MRL_DIV_VALUE, MRL_EV_CRASH);
+        set_div_ev(MRL_DIV_VALUE, MRL_EV_CRASH, &ev);
         return MRL_ERR_DIVERGED;
     }
     return MRL_OK;
@@ -224,7 +238,7 @@ mrl_err_t mrl_mark(const char *text, size_t len) {
         return e;
     }
     if (ev.len != len || (len && memcmp(ev.payload, text, len) != 0)) {
-        set_div(MRL_DIV_VALUE, MRL_EV_MARK);
+        set_div_ev(MRL_DIV_VALUE, MRL_EV_MARK, &ev);
         return MRL_ERR_DIVERGED;
     }
     return MRL_OK;
