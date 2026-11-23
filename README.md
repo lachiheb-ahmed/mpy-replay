@@ -1,7 +1,7 @@
 # mpy-replay
 
 **Deterministic record & replay for MicroPython.**
-Record the external inputs of a running MicroPython program, then re-run the exact same execution later on a PC with a debugger.
+Record the external inputs of a running MicroPython program, then re-run the exact same execution later on a PC, where you can reproduce and inspect it as often as you need.
 
 > **Status: v0.1.0-alpha (prototype).** Record and replay are validated end to end on the MicroPython **unix port**. The STM32 adapter is written but **not yet tested on hardware**. APIs and the log format may change before v1.0.
 
@@ -39,11 +39,26 @@ Copyright (c) 2026 Ahmed ([@lachiheb-ahmed](https://github.com/lachiheb-ahmed)).
 
 ---
 
+## What it is for, and what it is not (yet)
+
+**It can help today** (validated on the unix port):
+
+- **Reproducing a bug that depends on a sequence of inputs and on timing.** [examples/field_bug](examples/field_bug) is a serial-frame parser that crashes only when the sender stalls mid-frame. Five independent recordings crashed at five different points; each recording replays to the same state every time, and the final state shows the root cause.
+- **Inspecting the reproduced failure.** Statements that add no VM branch, such as `print()`, can be added to the program and the same log still replays, so you can watch the internal state evolve up to the crash.
+- **Bugs that depend on `ticks_ms()` values** (timeouts, wrap-around) and on **the order in which scheduled callbacks (soft IRQs) run relative to the main loop**. The callback order is validated with simulated interrupts that use the same scheduler call a real ISR uses.
+
+**Not covered yet:**
+
+- **Replaying modified code.** After a fix that changes control flow, the replay stops with a divergence, because it checks the logical clock. An input-only replay mode, to re-test a fix against recorded inputs, is planned.
+- **Long recordings on a board.** 4 KB of backup SRAM holds a few hundred events (about 160 reads of the example above). Streaming and larger backends are planned.
+- **Real-time timing.** Events are ordered on a logical clock, not real time: the skew between two pins read one after the other is not stored. Waveform-level signals (DMX, PIO, bit-banged buses), hard IRQ handlers, DMA, memory or GC bugs and performance problems are out of scope.
+- **Real hardware.** It has not been run on a board yet.
+
 ## 1. Why
 
 Bugs found in the field depend on timing, sensor noise, serial traffic and interrupts that cannot be reproduced on the bench. A stack trace is rarely enough.
 
-`mpy-replay` stores only the **inputs** of the program (a few bytes per event) and can then re-execute the run deterministically, so any crash can be stepped through as often as needed.
+`mpy-replay` stores only the **inputs** of the program (a few bytes per event) and can then re-execute the run deterministically, so any crash can be reproduced and inspected as often as needed.
 
 ## 2. How it works
 
@@ -92,7 +107,7 @@ Tested against MicroPython master (commit `9e10c3e`, unix port, `standard` varia
 
 ## 4. Performance and FAQ
 
-The hook adds a 64-bit increment and one test per VM branch. Measured on the unix port (shared single core, so treat as indicative): about +1% to +13% on realistic code, up to about +20% on a branch-only loop, and recording adds roughly 5-10% on top. On Cortex-M the fast path is 10 instructions. Details, method and caveats are in [docs/BENCHMARK.md](docs/BENCHMARK.md). Questions you are likely to ask (GC, asyncio, floats, prior art, security of logs, upstreaming) are answered in [docs/FAQ.md](docs/FAQ.md).
+The hook adds a 64-bit increment and one test per VM branch. Measured on the unix port (shared single core, so treat as indicative): about +1% to +13% on realistic code, up to about +20% on a branch-only loop, and recording adds roughly 5-10% on top. On Cortex-M the fast path is 10 instructions. Details, method and caveats are in [docs/BENCHMARK.md](docs/BENCHMARK.md). Questions you are likely to ask (GC, asyncio, floats, prior art, security of logs, upstreaming) are answered in [docs/FAQ.md](docs/FAQ.md). How many events fit in the log, and what the tool is not for (waveform-level capture, real-time skew), is in [docs/SIZING.md](docs/SIZING.md).
 
 ## 4b. Repository layout
 

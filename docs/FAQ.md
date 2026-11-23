@@ -33,6 +33,9 @@ The core and the MicroPython glue are port-independent; each port needs a small 
 **11. The log only holds 4 KB on STM32. Is that useful?**
 It is a flight recorder: a few hundred events, enough for a short window from `replay.start()`. Replay needs the log from the start of the run, so a longer recording needs a bigger backend (flash, FRAM, SD). A ring buffer with periodic state snapshots would allow arbitrary length; it is the largest planned improvement and the hardest one.
 
+**11b. How many events fit, and what is it not for?**
+See [SIZING.md](SIZING.md): the byte cost of each input, the resulting recording time at typical poll rates, and the cases that are out of scope (waveform-level capture, signals faster than Python can poll, real-time skew between pins).
+
 **12. Is the log sensitive data?**
 Yes. It contains the raw inputs: sensor values, serial traffic, possibly credentials or personal data passing over UART. Treat `.mrl` files like logs containing secrets, and do not post them in public issues.
 
